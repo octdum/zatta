@@ -1,0 +1,54 @@
+﻿html {
+	font-family: 'メイリオ', 'Meiryo UI', sans-serif;
+	line-height: 1.5;
+	background-color: #fefefe;
+	color: #111111;
+	text-align: center;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	line-height: 1.2;
+	text-align: center;
+	margin: 0.6em 0;
+}
+
+ol, ul {
+	text-align: left;
+}
+
+li {
+	margin : 0.5em 0 0 0;
+	text-align:left;
+}
+
+li > h3 {
+	text-align : left;
+}
+
+a:link {
+	color: #444444;
+}
+
+a:visited {
+	color: #888888;
+}
+
+header {
+	margin: 30px auto;
+}
+
+header > div {
+	font-size: 0.7em;
+	color: #444444;
+}
+
+.container {
+	max-width: 600px;
+	margin: 50px auto;
+}
+
+footer {
+	max-width: 700px;
+	margin: 0px auto;
+	text-align: right;
+}

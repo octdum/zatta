@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>ラーメンタイマー -2020ver.-</title>
+
+    <link rel="apple-touch-icon" href="favicon.ico">
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="stylesheet" href="source/style.css">
+    <link href="https://fonts.googleapis.com/css?family=Kosugi+Maru|Lexend+Exa&display=swap" rel="stylesheet">
+
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1, user-scalable=no" name="viewport">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+</head>
+<body>
+    <header></header>
+    <div class="content">
+        <div class="content_header">
+            <h1>ラーメンタイマー</h1>
+            <h2>- 2020ver. -</h2>
+        </div>
+        <div class="content_container">
+            <div class="timer_input">
+                <div>
+                    <div>
+                        RAMEN-NAME
+                    </div>
+                    <div>
+                        <input id="input_ramen_name" class="textline" type="text" placeholder="インスタントラーメン" />
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        SETTINGS
+                    </div>
+                    <div>
+                        開始/終了時の効果音 : <input id="input_timer_sound" type="checkbox" />
+                    </div>
+                    <div>
+                        お湯を入れる時間 :
+                        <input id="input_timer_interval" class="textline" type="number" value="0" />
+                        秒 (≦30)
+                    </div>
+                    <br />
+                    <div>! ADVANCED SETTINGS !</div>
+                    <div>
+                        硬さ継承 : <input id="input_recipe_katasa_inhelit" type="checkbox" />
+                    </div>
+                    <div>
+                        ラーメンの相対速度 :
+                        <input id="input_ramen_speed" class="textline" type="number" value="0" />
+                        km/h
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        CONTROLLER
+                    </div>
+                    <input type="button" class="button" onclick="application.OnPushedTimerSet();" value="SET" />
+                    <input type="button" class="button" id="input_timer_controll_action" onclick="application.OnPushedTimerAction();" value="START" />
+                </div>
+                <div id="output_error">
+                    <div>
+                        ERRORLOG
+                    </div>
+                    <div id="output_error_info">
+                        JavaScriptが利用できる環境で実行してください...<br />
+                    </div>
+                </div>
+            </div>
+            <div class="timer_output">
+                <div class="timer_display">
+                    <div>
+                        <span id="output_time_n">3:00</span><span id="output_time_m">.000</span>
+                        / <span id="output_time_length">3:00.000</span>
+                    </div>
+                </div>
+                <div>
+                    RECIPE(<span id="output_recipe_progress">0</span>/<span id="output_recipe_length">0</span>)
+                </div>
+                <div id="output_recipe">
+
+                </div>
+                <div id="output_timelag">
+                    
+                </div>
+            </div>
+        </div>
+        <div class="content_container">
+            <div>
+                <h2>HOW TO USE</h2>
+                <ol>
+                    <li>
+                        「RAMEN-NAME」に作りたいラーメンを入力してね。<br />
+                        詳しい書き方とか使える単語は、下の「DICTIONARY」を見てね。
+                    </li>
+                    <li>
+                        「SET」ボタンを押してタイマーをセットしよう。そのまんまだね。
+                    </li>
+                    <li>
+                        心の準備ができたら「START」ボタンを押して、タイマーをスタートさせよう。そのまんまだね。
+                    </li>
+                    <li>
+                        タイマーを止めたいときは「PAUSE」を押そう。そのまんまだよ。
+                    </li>
+                    <li>
+                        タイマーを最初に戻したいときや、違うラーメンを食べたくなって入力しなおしたときは「SET」ボタンを押してね。つまり無限に使えるよ。
+                    </li>
+                </ol>
+            </div>
+            <div>
+                <h2>DICTIONARY</h2>
+                <ol id="output_word_list">
+                </ol>
+                ※カタカナにするのがメンドクサイ場合、ひらがなでも大丈夫です。
+            </div>
+            <div>
+                <h2>OMAKE</h2>
+                <ul>
+                    <li>
+                        <b>硬さ継承</b><br />
+                        ONにすると硬さが手前までの工程にも反映されます。<br />
+                        例えば、「インスタントインスタントバリカタラーメン」を作るとき、一番最初の工程もバリカタで作ることができます。(通常時の「インスタントバリカタインスタントバリカタラーメン」と同じ)<br />
+                        硬さが継承されている工程で硬さを指定すると、硬さを「掛け合わせる」ことができます。<br />
+                        (硬すぎて1工程が1ピコ秒未満であったり、柔らかすぎて完成に1000年以上かかるラーメンは作れません。)
+                    </li>
+                    <li>
+                        <b>ラーメンの相対速度</b><br />
+                        タイマーが、俗にいう「ウラシマ効果」により生じる時間のズレを考慮した速さになります。<br />
+                        「自分(このツールを利用してるデバイス)」から見た「ラーメン」の速度を入力してください。<br />
+                        ラーメンが加速している場合は正数、自分が加速している場合は負数となります。<br />
+                        (光速 (1,079,252,848.8 km/h) を超えたラーメンは作れません。)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <div>
+            2020 Shirumono : <a href="https://twitter.com/Octdum">@Octdum</a>
+        </div>
+    </footer>
+    <audio id="audio_timer_start" preload="auto" src="source/gong_start.mp3"></audio>
+    <audio id="audio_timer_finish" preload="auto" src="source/gong_finish.mp3"></audio>
+    <script type="text/javascript" src="source/main.js"></script>
+</body>
+</html>

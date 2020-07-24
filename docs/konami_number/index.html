@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>小並数値変換器</title>
+    <style>
+        body {
+            background: #fff;
+            color: #444;
+            font-size: 16px;
+            font-family: 'メイリオ', Meiryo, 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', Helvetica, Arial, 'ＭＳ Ｐゴシック', sans-serif;
+        }
+
+        .UpdateLogList li {
+            margin-bottom: 20px;
+        }
+
+        .UpdateLogList ul {
+            padding-left: 20px;
+        }
+
+        .UpdateLog li {
+            margin: auto;
+        }
+    </style>
+
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1, user-scalable=no" name="viewport">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+</head>
+<body>
+	<h2>小並数値変換器</h2>
+	<p>小学生の頃に大体の人が聞いたことがあるであろう数値、「1億万」。<br />そんな感じの小並みな数値を正しい表記に直します。</p>
+	<p>
+		<input id="eInputStr" type="text" style="width:100%;height:25px" placeholder="変換したい数値"/>
+	</p>
+	<p style="text-align:left">
+		↓<input type="button" onclick="pushConvertButton();" value="変換"/>
+	</p>
+	<p>
+		<input readonly id="eResultRfx" type="text" style="width:100%; height:25px;" placeholder="変換結果" />
+		<input readonly id="eResultExp" type="text" style="width:100%; height:25px;" placeholder="指数表記" />
+		<input readonly id="eResultNon" type="text" style="width:100%; height:25px;" placeholder="単位なし" />
+	</p>
+	<br />
+	<h3>変換規則</h3>
+	<ul>
+		<li>単位が2つ以上連なっている場合はその大きさ同士の掛け算 ("1億万" : 1 (億[10^8] x 万[10^4]) = 1兆[10^12])</li>
+		<li>数値部が5桁以上ある場合はその中が優先して変換される ("100002000万" = (1億2000)万 = 1兆2000万)</li>
+		<li>本来下位で使われる単位から優先して変換される ("1万2億3000万" = "(1万2)億3000万" = 1兆2億3000万)</li>
+		<li>数値の上位桁に"0"が並んでいる場合は無視 (1万0000000001 = "1万1")</li>
+	</ul>
+	<br />
+	<h3>その他注意とか</h3>
+	<ul>
+		<li>下記の使用できる単位、半角数字以外は無視されます。桁区切りでコンマとか空白とか入れても大丈夫です。</li>
+		ですが、何かものすごい特殊な文字を打つとおかしい動作をする可能性もあるかもしれないので、キーボードでフツーに打てる文字を使用してください。
+		<li>変換できる数値の上限を設定してありません。数億万桁とか入力すると多分フリーズします。</li>
+		<li>変な結果になったらごめんなさい。</li>
+		<li>GoogleChromeで動作確認をしてます。他ブラウザでもJavascriptとHTMLが対応していれば多分動きますが、保証はないです。</li>
+	</ul>
+	<br />
+	<h3>使用できる単位一覧</h3>
+	<span id="eListActiveButton" onclick="pushPrefixList()" style="cursor:pointer" >>クリックで表示<</span>
+	<p id="ePrefixList" style="display:none">
+	</p>
+
+	<script>
+		//単位の定義(重さが小さい順)
+		var pfxJp   = ["万", "億", "兆", "京", "垓", "𥝱", "穣", "溝", "澗", "正", "載", "極", "恒河沙", "阿僧祇", "那由他", "不可思議", "無量大数"];
+		var pfxNm   = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68];
+		var zeroStr = "00000000000000000000000000000000000000000000000000000000000000000000";
+
+		//単位の表示ボタンが押されたときに実行される処理
+		function pushPrefixList() {
+			var obj = document.getElementById("ePrefixList").style;
+			obj.display = (obj.display == "none" ? "block" : "none");
+			document.getElementById("eListActiveButton").textContent = (obj.display == "none" ?  ">クリックで表示<" : "<クリックで非表示>")
+		}
+
+		//受け取った文字列型小並数値を文字列型数値に変換
+		function convertKonamiNumber(inStr) {
+			var funcCnt = 0;					//関数が呼び出された回数(暴走回避用)
+
+			return getFactor(Infinity);
+
+			//単位の後に続く係数を調べる
+			function getFactor(parentDig) {
+				funcCnt++;
+				if (funcCnt >= 1000) { return "0"; }
+
+				var factorStr = "";				//係数を格納する文字列
+
+				var factorDig = 0;				//係数の桁数
+				var zeroDig = 0;				//0が続いている桁数
+				
+				//一時的な変数
+				var catchChar = '';				//取得した1文字を格納する
+				var prefixId = -1;				//取得した単位と"一致"した、単位配列の要素番号
+				var prefixLength = 0;			//取得した単位の文字列長
+				var subText = "";				//文字列検索用変数
+
+				while (inStr != "") {
+					//末尾1文字を取得
+					catchChar = inStr.slice(-1);
+					if ( !isNaN(catchChar) && catchChar != ' ' ) {
+						//取得した文字が数字の場合
+						if (catchChar == '0') {
+							//数字が0の場合
+							zeroDig++;
+						} else {
+							//数字が0以外の場合
+							factorDig += zeroDig + 1;
+							//係数の桁を追加
+							factorStr = catchChar + addZero(zeroDig) + factorStr;
+							zeroDig = 0;
+						}
+						//小並数値の末尾1桁を調べたので削除
+						inStr = inStr.slice(0,-1);
+					} else {
+						//取得した文字が数字以外(桁)
+						zeroDig = 0;
+						prefixLength = 0;
+
+						//桁数の取得
+						while (isNaN(inStr.substr(-prefixLength - 1, 1)) || inStr.substr(-prefixLength - 1, 1) == ' ') {
+							if (prefixLength > 0) {
+								subText = inStr.slice(-prefixLength - 4, -prefixLength);
+							} else {
+								subText = inStr.substr(-4);
+							}
+							
+							if (subText == "") { break; }
+							prefixId = searchPrefix(subText);
+							if (prefixId != -1) {
+								//桁が見つかった場合、桁数の追加
+								zeroDig += pfxNm[prefixId];
+								prefixLength += pfxJp[prefixId].length;
+							} else {
+								prefixLength += 1;
+							}
+						}
+
+						if (zeroDig > 0) {
+							if (factorStr == "") {
+								factorStr = "0";
+								factorDig = 1;
+							}
+
+							if (factorDig > zeroDig) {
+								//取得した桁の大きさが、自身の桁より小さい場合、再帰させてその単位の係数を得る
+								//ここに来るのは「数字が単位の大きさ以上につながっているとき」
+								inStr = inStr.slice(0, -prefixLength);
+								var factorFactorStr = getFactor(factorDig + zeroDig - 1);
+
+								if (factorFactorStr != "0") {
+									//係数が0ではない場合
+									factorStr = factorFactorStr + addZero(zeroDig - 1) + factorStr;
+									factorDig += factorFactorStr.length + zeroDig - 1;
+								}
+							} else if (parentDig + factorDig <= zeroDig) {
+								//取得した桁の大きさが、再帰元の桁数 以上 の場合、再帰元に帰る
+								break;
+							} else {
+								//再帰元の桁数以下(不正確な記述)であるが、自身の係数から見て正しい単位である場合
+								inStr = inStr.slice(0, -prefixLength);
+								var factorFactorStr = getFactor(zeroDig);
+
+								if (factorFactorStr != "0") {
+									//係数が0ではない場合
+									zeroDig -= factorDig;
+									factorStr = factorFactorStr + addZero(zeroDig) + factorStr;
+									factorDig += factorFactorStr.length + zeroDig;
+								}
+							}
+						} else {
+							//意味のない文字の塊である場合
+							inStr = inStr.slice(0, -prefixLength);
+						}
+					}
+				}
+
+				//係数が見つからない場合は0として返す
+				if (factorStr == "") {
+					factorStr = "0";
+				}
+				return factorStr;
+			}
+
+			//桁数分の0を文字列にして返す
+			function addZero(length) {
+				if (length < 1) { return ""; }
+				var str = "";
+				for (; length >= zeroStr.length; length -= zeroStr.length) {
+					str += zeroStr;
+				}
+				str += zeroStr.slice(0, length);
+				return str;
+			}
+
+			//文字列に含まれた単位があるか調べる。右側優先の探索で、戻り値にはpfxJpの配列添え字が返る(引数の文字列は4文字以上)
+			function searchPrefix(pStr) {
+				var idx;
+				for (idx = 0; idx < pfxJp.length && pStr.slice(-pfxJp[idx].length) != pfxJp[idx]; idx++) { }
+				if (idx == pfxJp.length) {
+					idx = -1;
+				}
+				return idx;
+			}
+		}
+
+		//単位一覧リストを更新する
+		function syncPrefixList() {
+			var str = "";
+			str += "<table>";
+			for (var i = 0; i < pfxJp.length; i++) {
+				str += "<tr>";
+				str += "<td>" + pfxJp[i] + "</td>";
+				str += "<td> : 1" + zeroStr.slice(-pfxNm[i]) + "</td>";
+				str += "</tr>";
+			}
+			str += "</table>";
+			document.getElementById("ePrefixList").innerHTML = str;
+		}
+		syncPrefixList();
+
+		//変換ボタンが押されたときに実行される処理
+		function pushConvertButton() {
+			var inStr = document.getElementById("eInputStr").value;
+			var resStr = convertKonamiNumber(inStr);
+			document.getElementById("eResultRfx").value = convertPrefixNumber(resStr);
+			document.getElementById("eResultExp").value = convertExponentNumber(resStr);
+			document.getElementById("eResultNon").value = resStr;
+		}
+
+		//受け取った文字列型数値を指数表記にして返す
+		function convertExponentNumber(str) {
+			var kasuu = str.slice(0, 1);
+			var c = str.slice(1, 6);
+			if (c != "") {
+				kasuu += "." + c;
+			}
+			kasuu += " x 10^"
+			var sisuu = str.length - 1;
+			var output = kasuu + String(sisuu);
+			return output;
+		}
+
+
+		//受け取った文字列型数値を接頭語を付けて返す
+		function convertPrefixNumber(str) {
+			var now_t;
+			var outstr = "", keistr = "";
+			var n_zero = false;
+
+			for (var now_t = 0; now_t < pfxJp.length; now_t++) {
+				if (str.length <= pfxNm[now_t]) {
+					break;
+				}
+			}
+			for (var len = str.length; len > pfxNm[0]; len--) {
+				var c = str.slice(0, 1);
+				if (n_zero == true || c != "0") {
+					keistr += c;
+
+					n_zero = true;
+				}
+
+				if (len == pfxNm[now_t - 1] + 1) {
+					if (n_zero == true) {
+						outstr += keistr + pfxJp[now_t - 1];
+					}
+					now_t--;
+					keistr = "";
+					n_zero = false;
+				}
+				str = str.slice(1);
+			}
+
+			//最後に単位のない下位桁を追加
+			for (var len = pfxNm[0]; len >= 0; len--) {
+				var c = str.slice(0, 1);
+				if (n_zero == true || c != "0") {
+					outstr += c;
+					n_zero = true;
+				}
+				str = str.slice(1);
+			}
+
+			if (outstr == "") {
+				outstr = "0";
+			}
+			return outstr;
+		}
+
+	</script>
+</body>
+</html>
+
+<!--
+	1億万			/ 1兆			/ 1 0000 0000 0000	
+	1億1万			/ 1億1万			/      1 0001 0000
+	1億万1万			/ 1兆1万			/ 1 0000 0001 0000
+	1億万10000万		/ 1兆1億			/ 1 0001 0000 0000
+-->
